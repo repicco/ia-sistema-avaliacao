@@ -4,9 +4,9 @@ Aplicacao inicial para cadastro de contas, com Next.js, React, TypeScript, React
 
 ## Desenvolvimento
 
-Requer Bun e um projeto Supabase.
+Requer Bun (use `bun --bun run` para executar a aplicação com Bun) ou Node.js 22.13 ou superior, além de um projeto Supabase.
 
-1. Instale as dependencias com `bun install` (ou use Node.js 22.13 ou superior).
+1. Instale as dependencias com `bun install`.
 2. Copie `.env.example` para `.env.local` e preencha `SUPABASE_URL`, a chave `service_role` do Supabase, `AUTH_SESSION_SECRET` com um valor aleatório de pelo menos 32 bytes e `OPENAI_API_KEY`.
 3. Execute as migrations no SQL Editor do Supabase nesta ordem:
    1. `supabase/migrations/20261018000000_create_accounts.sql`
@@ -14,7 +14,9 @@ Requer Bun e um projeto Supabase.
    3. `supabase/migrations/20261019010000_create_products_feedbacks.sql`
    4. `supabase/migrations/20261020000000_add_product_price.sql`
    5. `supabase/migrations/20261021000000_add_product_ai_summary.sql`
-4. Inicie o servidor com `bun run dev` e abra [http://localhost:3000/auth/sign-up](http://localhost:3000/auth/sign-up).
+   6. `supabase/migrations/20261030100000_feedback_unique_and_rls.sql`
+4. Inicie o servidor com `bun --bun run dev` e abra [http://localhost:3000/auth/sign-up](http://localhost:3000/auth/sign-up).
+5. Rode `bun test`, `bun run lint` e `bun run typecheck` antes de enviar mudanças.
 
 A chave `SUPABASE_SERVICE_ROLE_KEY` tem acesso administrativo ao banco: mantenha-a somente no ambiente do servidor, nunca a exponha como variavel `NEXT_PUBLIC_*`.
 `AUTH_SESSION_SECRET` também é exclusivamente do servidor e assina os cookies de sessão; não compartilhe nem inclua esse valor em código ou variáveis `NEXT_PUBLIC_*`.
@@ -33,22 +35,22 @@ O cadastro cria a conta com `active = true`; nao ha envio de e-mail ou fluxo de 
 
 - A pagina inicial `/` lista produtos publicamente e carrega mais itens conforme a pessoa percorre o catalogo.
 - `GET /api/v1/products` retorna `{ "items": [...], "nextCursor": "..." }`. A consulta aceita `cursor` e `limit`; o limite padrao e 12 e o maximo e 24. Sem produtos, retorna `200` com `items: []` e `nextCursor: null`.
-- `POST /api/v1/products` cria um produto sem exigir autenticação ou sessão e retorna `201` com `{ "item": ... }`. Envie `{ "name": "Produto", "image": "https://exemplo.com/imagem.jpg", "price": 129.90 }`; `image` deve ser uma URL HTTPS e `price` um número não negativo com até duas casas decimais. O `id` e gerado pela API.
-- A criação pública irrestrita pode permitir cadastros abusivos; aplique limitação de requisições ou outra proteção na infraestrutura se isso for necessário.
+- `POST /api/v1/products` exige sessão e retorna `201` com `{ "item": ... }`. Visitante recebe `401`. Envie `{ "name": "Produto", "image": "https://exemplo.com/imagem.jpg", "price": 129.90 }`; `image` deve ser uma URL HTTPS e `price` um número não negativo com até duas casas decimais. O `id` e gerado pela API. A listagem e a página de detalhe mostram o preço.
 - A coluna `score` e booleana e inicia em `false`; nao representa a media das avaliacoes.
 
 ## Acesso e sessoes
 
 - A pagina `/auth/sign-in` envia e-mail e senha como JSON para `POST /api/v1/sign-in`.
 - A API retorna `400` para dados invalidos, `401` para credenciais invalidas e `200` no sucesso. O cookie assinado `avalia_session` e `HttpOnly`, tem validade de sete dias e e `Secure` em producao.
-- O cabecalho da plataforma mostra o link de acesso para visitantes e a identidade da conta autenticada. A sessao do servidor e consultada por `getCurrentAccount()` em `lib/auth/session.ts`.
+- O cabecalho da plataforma mostra o link de acesso para visitantes e a identidade da conta autenticada, com avatar Dicebear e botão Sair. `POST /api/v1/sign-out` apaga o cookie. A sessao do servidor e consultada por `getCurrentAccount()` em `lib/auth/session.ts`.
+- Depois do login, a pessoa volta para o caminho interno em `?next=` quando ele é seguro; caso contrário vai para `/`.
 
 ## Avaliacoes
 
 - A pagina publica `/products/{id}` mostra os dados do produto e as avaliacoes existentes.
 - `GET /api/v1/products/{id}/feedbacks` retorna as avaliacoes e o nome publico de cada autor; produto inexistente retorna `404`.
-- `POST /api/v1/products/{id}/feedbacks` exige sessao e recebe `{ "score": 1, "comment": "..." }`, com nota inteira de 1 a 5 e comentario de ate 2.000 caracteres. A API define `created_by` a partir da sessao; visitante recebe `401` e sucesso retorna `201`.
-- A página do produto exibe um resumo das avaliações gerado pelo agente Mastra com `openai/gpt-4o-mini`. O resumo é salvo no produto, atualizado após cada nova avaliação e gerado na primeira consulta para produtos que já tenham avaliações. Configure `OPENAI_API_KEY`; se a geração falhar, a avaliação continua salva e a página informa que o resumo não foi atualizado.
+- `POST /api/v1/products/{id}/feedbacks` exige sessao e recebe `{ "score": 1, "comment": "..." }`, com nota inteira de 1 a 5 e comentario de ate 2.000 caracteres. A API define `created_by` a partir da sessao; visitante recebe `401`, duplicata da mesma conta no mesmo produto recebe `409` e sucesso retorna `201`.
+- A página do produto exibe um resumo das avaliações gerado pelo agente Mastra com `openai/gpt-4o-mini`. O resumo é salvo no produto e atualizado após cada nova avaliação. `GET` só lê o valor já persistido. Configure `OPENAI_API_KEY`; se a geração falhar, a avaliação continua salva e a página informa que o resumo não foi atualizado.
 - A migration `20261019010000_create_products_feedbacks.sql` depende da tabela `products` criada pela migration `20261019000000_create_products.sql`.
 
 ## Fluxo de acesso
@@ -58,7 +60,9 @@ O cadastro cria a conta com `active = true`; nao ha envio de e-mail ou fluxo de 
 - O sucesso retorna `200` e define o cookie `avalia_session`: assinado com HMAC, `HttpOnly`, `SameSite=Lax`, restrito ao caminho `/` e `Secure` em produção. A sessão expira após sete dias.
 - O módulo de servidor `lib/auth/session.ts` exporta `getCurrentAccount()`, que valida o cookie e retorna `{ id, firstName, lastName, email }` da conta ativa ou `null`.
 
-## N8N
+## N8N (opcional, sem integração na app)
+
+O container abaixo sobe o N8N local. Nenhum fluxo da Avalia depende dele hoje.
 
 docker volume create n8n_data
 

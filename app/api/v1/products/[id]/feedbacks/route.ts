@@ -1,19 +1,20 @@
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
 import { getCurrentAccount } from "@/lib/auth/session";
-import { getFeedbackDatabase } from "@/lib/feedback/database";
 import { updateProductFeedbackSummary } from "@/lib/feedback/product-summary";
+import { jsonError, jsonOk } from "@/lib/http";
+import { getServiceClient } from "@/lib/supabase/server";
 import { feedbackSchema } from "@/lib/validation/feedback";
 
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function jsonError(error: string, status: number) {
-  return NextResponse.json(
-    { error },
-    { status, headers: { "Cache-Control": "no-store" } },
-  );
+function getFeedbackDatabase() {
+  const database = getServiceClient();
+  if (!database) {
+    throw new Error("Feedback database is not configured.");
+  }
+  return database;
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
@@ -52,27 +53,6 @@ export async function GET(_request: Request, { params }: RouteContext) {
       return jsonError("Não foi possível carregar as avaliações.", 500);
     }
 
-    let aiSummary = product.ai_summary;
-    let aiSummaryUpdatedAt = product.ai_summary_updated_at;
-    let summaryError = false;
-    if (!aiSummary && feedbacks && feedbacks.length > 0) {
-      try {
-        aiSummary = await updateProductFeedbackSummary(
-          database,
-          product.id,
-          product.name,
-          feedbacks.map(({ score, comment }) => ({ score, comment })),
-        );
-        aiSummaryUpdatedAt = new Date().toISOString();
-      } catch (error) {
-        console.error("Initial product feedback summary generation failed.", {
-          productId: product.id,
-          error,
-        });
-        summaryError = true;
-      }
-    }
-
     const accountIds = [
       ...new Set((feedbacks ?? []).map((item) => item.created_by)),
     ];
@@ -97,21 +77,18 @@ export async function GET(_request: Request, { params }: RouteContext) {
       ]),
     );
 
-    return NextResponse.json(
-      {
-        items: (feedbacks ?? []).map(({ created_by: createdBy, ...item }) => ({
-          ...item,
-          author: authors.get(createdBy) || "Pessoa avaliadora",
-        })),
-        aiSummary,
-        aiSummaryUpdatedAt,
-        summaryCount:
-          product.ai_summary_feedback_count ??
-          (aiSummary ? (feedbacks?.length ?? 0) : 0),
-        summaryError,
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return jsonOk({
+      items: (feedbacks ?? []).map(({ created_by: createdBy, ...item }) => ({
+        ...item,
+        author: authors.get(createdBy) || "Pessoa avaliadora",
+      })),
+      aiSummary: product.ai_summary,
+      aiSummaryUpdatedAt: product.ai_summary_updated_at,
+      summaryCount:
+        product.ai_summary_feedback_count ??
+        (product.ai_summary ? (feedbacks?.length ?? 0) : 0),
+      summaryError: false,
+    });
   } catch (error) {
     console.error("Feedback list request failed.", error);
     return jsonError("Não foi possível carregar as avaliações.", 500);
@@ -178,6 +155,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       .select("id, score, comment, created_at")
       .single();
 
+    if (insertError?.code === "23505") {
+      return jsonError("Você já avaliou este produto.", 409);
+    }
     if (insertError) {
       console.error("Feedback insert failed.", { code: insertError.code });
       return jsonError("Não foi possível salvar sua avaliação.", 500);
@@ -216,7 +196,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       summaryError = true;
     }
 
-    return NextResponse.json(
+    return jsonOk(
       {
         item: {
           ...createdFeedback,
@@ -227,7 +207,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         summaryCount,
         summaryError,
       },
-      { status: 201, headers: { "Cache-Control": "no-store" } },
+      201,
     );
   } catch (error) {
     console.error("Feedback create request failed.", error);

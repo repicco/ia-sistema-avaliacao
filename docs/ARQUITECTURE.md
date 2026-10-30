@@ -2,33 +2,31 @@
 
 ## Front-end
 
-Vamos utilizar as seguintes bibliotecas principais:
+- TypeScript
+- Next.js (App Router) e React
+- Biome (lint e formatação)
+- Tailwind CSS 4, com tokens em `app/globals.css`
+- React Hook Form + Zod
+- TanStack Query (listagens, mutações e cache)
 
-- TypeScript : Linguagem principalmente de desenvolvimento com tipagem
-- Next.js: Framework para criacao e gestao de interfaces + APIs
-- React.js: Biblioteca para criacao e componentizacao de interfaces
-- Biome: Validacao/formatacao/correcao de código (lint)
-- TailwindCss: Estilizacao
-- Date-Fns: Manipulacao de data/hora
-- Shadcn: Componetizacao base (design system)
-- React Query: Criacao e gestao de queries para ler dados da API e mutations para alterar os dados
+Shadcn está referenciado em `components.json` como base futura. Ainda não há `components/ui`.
 
 ## Back-end
 
-- TypeScript : Linguagem principalmente de desenvolvimento com tipagem
-- Next.js: Framework para criacao de APIs
-- bcryptjs: Implementacao em JavaScript do bcrypt para hash de senhas com salt incorporado ao hash
-- Mastra.ai: Criacao e customizacao de agentes internos
-- TRPC: Gestao de endpoints
+- TypeScript
+- Next.js Route Handlers em `/api/v1`
+- bcryptjs para hash de senha
+- Mastra.ai para o resumo de avaliações
+- Cookie HMAC próprio (`avalia_session`); não usamos tRPC nem NextAuth
 
 ## Banco de dados
 
-Supabase: PostgreSQL
+Supabase: PostgreSQL. A aplicação acessa o banco com a chave `service_role` no servidor. RLS está ligado: leitura pública de produtos e avaliações para `anon`/`authenticated`; contas e escritas continuam bloqueadas para essas roles.
 
 ## Infraestrutura
 
-Vercel: Hospedar tanto o servidor (API) quando cliente (SPA)
+Vercel: hospeda o servidor (API) e o cliente.
 
-## Automacao
+## Automação
 
-N8N: Cricao de fluxos automatizados
+N8N permanece como opção de fluxo externo. Nenhum workflow da aplicação depende dele hoje.

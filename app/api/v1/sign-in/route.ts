@@ -1,20 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
-import { NextResponse } from "next/server";
 import { createSessionToken, sessionCookie } from "@/lib/auth/session";
+import { jsonError, jsonOk } from "@/lib/http";
+import { getServiceClient } from "@/lib/supabase/server";
 import { signInSchema } from "@/lib/validation/sign-in";
 
 export const runtime = "nodejs";
 
 const DUMMY_PASSWORD_HASH =
   "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6D3zH1r8a4M5d7o9W8j2pK6nQ1u3S";
-
-function jsonError(error: string, status: number) {
-  return NextResponse.json(
-    { error },
-    { status, headers: { "Cache-Control": "no-store" } },
-  );
-}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -33,18 +26,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = getServiceClient();
   const sessionSecret = process.env.AUTH_SESSION_SECRET;
   if (
-    !supabaseUrl ||
-    !serviceRoleKey ||
+    !supabase ||
     !sessionSecret ||
     Buffer.byteLength(sessionSecret, "utf8") < 32
   ) {
     const missingSettings = [
-      !supabaseUrl && "SUPABASE_URL",
-      !serviceRoleKey && "SUPABASE_SERVICE_ROLE_KEY",
+      !supabase && "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY",
       !sessionSecret && "AUTH_SESSION_SECRET",
     ].filter((setting): setting is string => Boolean(setting));
     const invalidSettings = [
@@ -60,9 +50,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
     const escapedEmail = parsed.data.email.replace(/[\\%_]/g, "\\$&");
     const { data: account, error } = await supabase
       .from("accounts")
@@ -84,10 +71,7 @@ export async function POST(request: Request) {
     }
 
     const session = createSessionToken(account.id);
-    const response = NextResponse.json(
-      { message: "Acesso realizado com sucesso." },
-      { status: 200, headers: { "Cache-Control": "no-store" } },
-    );
+    const response = jsonOk({ message: "Acesso realizado com sucesso." });
     response.cookies.set(sessionCookie.name, session.value, {
       ...sessionCookie.options,
       maxAge: session.maxAge,

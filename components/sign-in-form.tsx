@@ -4,11 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
+import { getSafeInternalPath } from "@/lib/auth/redirect";
 import { signInSchema } from "@/lib/validation/sign-in";
 
 type SignInFields = z.input<typeof signInSchema>;
 
-export function SignInForm() {
+type SignInFormProps = {
+  redirectTo?: string;
+};
+
+export function SignInForm({ redirectTo = "/" }: SignInFormProps) {
+  const nextPath = getSafeInternalPath(redirectTo);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
@@ -42,7 +48,7 @@ export function SignInForm() {
         return;
       }
 
-      window.location.assign("/");
+      window.location.assign(nextPath);
     } catch {
       setServerError(
         "Não foi possível conectar. Verifique sua conexão e tente novamente.",

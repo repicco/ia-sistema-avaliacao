@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SignUpSuccess } from "@/components/sign-up-success";
+
+export const metadata: Metadata = {
+  title: "Conta criada | Avalia",
+  description: "Sua conta Avalia foi criada com sucesso.",
+};
 
 export default function SignUpSuccessPage() {
   return (
@@ -53,45 +60,7 @@ export default function SignUpSuccessPage() {
       </aside>
 
       <section className="flex items-center justify-center px-6 py-12 sm:px-10 sm:py-16 lg:px-12 lg:py-20">
-        <div className="w-full max-w-[440px]">
-          <div
-            aria-hidden="true"
-            className="mb-8 flex size-14 items-center justify-center rounded-full bg-[#fff0c7] text-[#24379b]"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="size-7"
-            >
-              <path
-                d="m5 12.5 4.5 4.5L19 7"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-
-          <p className="mb-3 text-sm font-semibold text-[#334ed8]">
-            Cadastro confirmado
-          </p>
-          <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.045em] text-[#192342] sm:text-4xl">
-            Conta criada!
-          </h1>
-          <p className="mt-3 max-w-sm text-[15px] leading-6 text-[#68738a]">
-            Seu cadastro foi concluído com sucesso. Obrigado por fazer parte da
-            comunidade Avalia.
-          </p>
-
-          <Link
-            href="/auth/sign-up"
-            className="mt-8 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#334ed8] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#293fbe] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#334ed8]"
-          >
-            Voltar ao cadastro
-          </Link>
-        </div>
+        <SignUpSuccess />
       </section>
     </main>
   );

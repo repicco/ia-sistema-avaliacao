@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SignInForm } from "@/components/sign-in-form";
+import { getSafeInternalPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
   title: "Entrar | Avalia",
   description: "Entre na sua conta Avalia para continuar.",
 };
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const { next } = await searchParams;
+  const redirectTo = getSafeInternalPath(next);
   return (
     <main className="min-h-screen bg-[#f5f6fa] lg:grid lg:grid-cols-[1.04fr_0.96fr]">
       <aside className="relative flex min-h-[330px] flex-col overflow-hidden bg-[#334ed8] px-7 py-7 text-white sm:px-11 sm:py-9 lg:min-h-screen lg:px-[clamp(3rem,8vw,8rem)] lg:py-11">
@@ -71,7 +78,7 @@ export default function SignInPage() {
             </p>
           </header>
 
-          <SignInForm />
+          <SignInForm redirectTo={redirectTo} />
 
           <p className="mt-7 text-sm leading-6 text-[#737d91]">
             Ainda não tem uma conta?{" "}

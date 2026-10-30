@@ -28,8 +28,8 @@ Precisamos impementação o fluxo permitindo as pessoas logadas (autenticadas) a
 - Criar uma nova pagina de detalhes `/products/id`
 
 ## Você não deve
-- Implementar qualquer outra funcionalidade que não esteja relacionada com sign-up (criação de contas).
-- Não vamos realizar nenhum envio de email no momento, apenas processar a requisição, salvar no banco dados e tornar um sucesso.
+- Permitir avaliação sem sessão.
+- Enviar e-mail.
 
 ## Tecnologias (Stack)
 React.js, Next.js, React-Hook-Form, Shadcn, Tailwild, Supabase, TRCP, Bunjs.

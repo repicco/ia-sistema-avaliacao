@@ -1,8 +1,10 @@
 "use client";
 
+import { useInfiniteQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { formatPrice } from "@/lib/money";
 
 type Product = {
   id: string;
@@ -30,94 +32,86 @@ function isProductPage(value: unknown): value is ProductPage {
   );
 }
 
+async function fetchProductPage({
+  pageParam,
+}: {
+  pageParam: string | null;
+}): Promise<ProductPage> {
+  const params = new URLSearchParams();
+  if (pageParam) params.set("cursor", pageParam);
+  const query = params.size ? `?${params.toString()}` : "";
+  const response = await fetch(`/api/v1/products${query}`);
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      payload &&
+      typeof payload === "object" &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : "Não foi possível carregar os produtos.";
+    throw new Error(message);
+  }
+
+  if (!isProductPage(payload)) {
+    throw new Error("A resposta recebida não está no formato esperado.");
+  }
+
+  return payload;
+}
+
 export function ProductCatalog() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetchingNextPage,
+    isPending,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["products"],
+    queryFn: fetchProductPage,
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
 
-  const loadNextPage = useCallback(async () => {
-    if (loadingRef.current || !hasMore) return;
-
-    loadingRef.current = true;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (nextCursor) params.set("cursor", nextCursor);
-      const query = params.size ? `?${params.toString()}` : "";
-      const response = await fetch(`/api/v1/products${query}`);
-      const payload: unknown = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const message =
-          payload &&
-          typeof payload === "object" &&
-          "error" in payload &&
-          typeof payload.error === "string"
-            ? payload.error
-            : "Não foi possível carregar os produtos.";
-        throw new Error(message);
-      }
-
-      if (!isProductPage(payload)) {
-        throw new Error("A resposta recebida não está no formato esperado.");
-      }
-
-      setProducts((current) => {
-        const knownIds = new Set(current.map((product) => product.id));
-        return [
-          ...current,
-          ...payload.items.filter((product) => !knownIds.has(product.id)),
-        ];
-      });
-      setNextCursor(payload.nextCursor);
-      setHasMore(payload.nextCursor !== null);
-      setLoaded(true);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Não foi possível carregar os produtos.",
-      );
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, [hasMore, nextCursor]);
-
-  useEffect(() => {
-    if (!loaded && !error) void loadNextPage();
-  }, [error, loadNextPage, loaded]);
+  const products = data?.pages.flatMap((page) => page.items) ?? [];
+  const loaded = Boolean(data);
+  const loading = isPending || isFetchingNextPage;
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Não foi possível carregar os produtos."
+        : null;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore || loading || error) return;
+    if (!sentinel || !hasNextPage || loading || errorMessage) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          void loadNextPage();
+          void fetchNextPage();
         }
       },
       { rootMargin: "320px 0px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [error, hasMore, loadNextPage, loading]);
+  }, [errorMessage, fetchNextPage, hasNextPage, loading]);
 
   if (loaded && products.length === 0) {
     return (
       <section className="py-16 text-center" aria-live="polite">
-        <h2 className="font-serif text-3xl tracking-tight text-[#202a25]">
+        <h2 className="font-serif text-3xl tracking-tight text-ink">
           Ainda não há produtos por aqui
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-base leading-7 text-[#5f6b64]">
+        <p className="mx-auto mt-3 max-w-md text-base leading-7 text-muted">
           Volte em breve para descobrir novidades no catálogo.
         </p>
       </section>
@@ -140,15 +134,20 @@ export function ProductCatalog() {
                   className="object-cover"
                 />
               </div>
-              <h2 className="font-serif text-2xl leading-tight tracking-[-0.02em] text-[#202a25]">
+              <h2 className="font-serif text-2xl leading-tight tracking-[-0.02em] text-ink">
                 <Link
                   href={`/products/${encodeURIComponent(product.id)}`}
-                  className="rounded-sm underline decoration-transparent underline-offset-4 transition-colors hover:text-[#334ed8] hover:decoration-[#334ed8] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#334ed8]"
+                  className="rounded-sm underline decoration-transparent underline-offset-4 transition-colors hover:text-accent hover:decoration-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >
                   {product.name}
                 </Link>
               </h2>
-              <p className="mt-2 line-clamp-3 max-w-prose text-sm leading-6 text-[#5f6b64]">
+              {product.price !== null && (
+                <p className="mt-1 text-sm font-semibold text-ink">
+                  {formatPrice(product.price)}
+                </p>
+              )}
+              <p className="mt-2 line-clamp-3 max-w-prose text-sm leading-6 text-muted">
                 {product.description || "Uma novidade para conhecer."}
               </p>
             </li>
@@ -160,36 +159,36 @@ export function ProductCatalog() {
         ref={sentinelRef}
         className="flex min-h-28 flex-col items-center justify-center gap-3 py-8"
       >
-        {error ? (
+        {errorMessage ? (
           <>
-            <p role="alert" className="text-sm text-[#8b342b]">
-              {error}
+            <p role="alert" className="text-sm text-danger">
+              {errorMessage}
             </p>
             <button
               type="button"
-              onClick={() => void loadNextPage()}
+              onClick={() =>
+                void (isFetchNextPageError ? fetchNextPage() : refetch())
+              }
               disabled={loading}
-              className="rounded-sm px-3 py-2 text-sm font-medium text-[#334ed8] underline underline-offset-4 hover:text-[#293fb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#334ed8] disabled:opacity-60"
+              className="rounded-sm px-3 py-2 text-sm font-medium text-accent underline underline-offset-4 hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
             >
               Tentar novamente
             </button>
           </>
         ) : loading ? (
-          <p role="status" className="text-sm text-[#5f6b64]">
+          <p role="status" className="text-sm text-muted">
             Carregando produtos…
           </p>
-        ) : hasMore && products.length > 0 ? (
+        ) : hasNextPage && products.length > 0 ? (
           <button
             type="button"
-            onClick={() => void loadNextPage()}
-            className="rounded-sm px-3 py-2 text-sm font-medium text-[#334ed8] underline underline-offset-4 hover:text-[#293fb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#334ed8]"
+            onClick={() => void fetchNextPage()}
+            className="rounded-sm px-3 py-2 text-sm font-medium text-accent underline underline-offset-4 hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Carregar mais produtos
           </button>
         ) : loaded ? (
-          <p className="text-sm text-[#5f6b64]">
-            Você chegou ao fim do catálogo.
-          </p>
+          <p className="text-sm text-muted">Você chegou ao fim do catálogo.</p>
         ) : null}
       </div>
     </section>

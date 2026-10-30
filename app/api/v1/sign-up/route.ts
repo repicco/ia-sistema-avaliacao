@@ -1,17 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
+import { jsonError, jsonOk } from "@/lib/http";
+import { getServiceClient } from "@/lib/supabase/server";
 import { signUpSchema } from "@/lib/validation/sign-up";
 
 export const runtime = "nodejs";
-
-function jsonError(error: string, status: number) {
-  return NextResponse.json(
-    { error },
-    { status, headers: { "Cache-Control": "no-store" } },
-  );
-}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -30,18 +23,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
+  const supabase = getServiceClient();
+  if (!supabase) {
     console.error(
       "Sign-up is not configured: Supabase environment variables are missing.",
     );
     return jsonError("O cadastro está temporariamente indisponível.", 500);
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   const { error } = await supabase.from("accounts").insert({
     id: nanoid(),
@@ -60,8 +48,5 @@ export async function POST(request: Request) {
     return jsonError("Não foi possível criar sua conta. Tente novamente.", 500);
   }
 
-  return NextResponse.json(
-    { message: "Conta criada com sucesso." },
-    { status: 201, headers: { "Cache-Control": "no-store" } },
-  );
+  return jsonOk({ message: "Conta criada com sucesso." }, 201);
 }

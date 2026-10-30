@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignUpForm } from "@/components/sign-up-form";
+
+export const metadata: Metadata = {
+  title: "Criar conta | Avalia",
+  description: "Crie sua conta para participar da comunidade Avalia.",
+};
 
 export default function SignUpPage() {
   return (
@@ -67,7 +73,16 @@ export default function SignUpPage() {
 
           <SignUpForm />
 
-          <p className="mt-7 max-w-sm text-xs leading-5 text-[#737d91]">
+          <p className="mt-7 text-sm leading-6 text-[#737d91]">
+            Já tem uma conta?{" "}
+            <Link
+              href="/auth/sign-in"
+              className="font-semibold text-[#334ed8] underline decoration-[#b7c1ff] underline-offset-4 hover:text-[#293fb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#334ed8]"
+            >
+              Entrar
+            </Link>
+          </p>
+          <p className="mt-4 max-w-sm text-xs leading-5 text-[#737d91]">
             Seus dados são protegidos e usados somente para criar sua conta.
           </p>
         </div>

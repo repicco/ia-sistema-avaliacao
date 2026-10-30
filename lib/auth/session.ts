@@ -1,8 +1,8 @@
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { getServiceClient } from "@/lib/supabase/server";
 
 const SESSION_COOKIE_NAME = "avalia_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -87,15 +87,10 @@ export async function getCurrentAccount(): Promise<CurrentAccount | null> {
   const payload = verifySessionToken(token, getSessionSecret());
   if (!payload) return null;
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
+  const supabase = getServiceClient();
+  if (!supabase) {
     throw new Error("Session account lookup is not configured.");
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
   const { data, error } = await supabase
     .from("accounts")
     .select("id, first_name, last_name, email")

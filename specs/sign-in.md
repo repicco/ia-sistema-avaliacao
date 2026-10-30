@@ -36,14 +36,14 @@ Precisamos impementação o fluxo para permitir pessoas acessar a plataforma:
 - Cria uma página nova para autenticação
 
 ## Você não deve
-- Implementar qualquer outra funcionalidade que não esteja relacionada com sign-up (criação de contas).
-- Não vamos realizar nenhum envio de email no momento, apenas processar a requisição, salvar no banco dados e tornar um sucesso.
+- Revelar se o e-mail existe ou se a senha está errada; a mensagem é sempre genérica.
+- Enviar e-mail de recuperação de senha.
 
 ## Tecnologias (Stack)
 React.js, Next.js, React-Hook-Form, Shadcn, Tailwild, Supabase, TRCP, Bunjs.
 
 ## Critérios de aceitação
-- Temos uma página para criar a nova conta em `/auth/sign-in`
+- Temos uma página para entrar na conta em `/auth/sign-in`
 - A página contém um formulário com validação
 - A plataforma consegue se comunicar com a API para enviar os dados e receber uma resposta
 - Estamos informando possíveis erros

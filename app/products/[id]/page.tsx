@@ -6,6 +6,7 @@ import { PlatformHeader } from "@/components/platform-header";
 import { ProductFeedback } from "@/components/product-feedback";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { getFeedbackDatabase } from "@/lib/feedback/database";
+import { formatPrice } from "@/lib/money";
 
 type Product = {
   id: string;
@@ -81,27 +82,27 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <main className="mx-auto min-h-screen w-full max-w-6xl px-5 pb-20 pt-8 sm:px-8 lg:px-10">
         <Link
           href="/"
-          className="inline-flex min-h-10 items-center rounded-sm text-sm font-medium text-[#47536e] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#334ed8]"
+          className="inline-flex min-h-10 items-center rounded-sm text-sm font-medium text-muted underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
-          ← Voltar aos produtos
+          Voltar aos produtos
         </Link>
 
         {unavailable ? (
           <section
-            className="mt-8 rounded-xl border border-[#efc6bf] bg-[#fff6f4] px-6 py-8"
+            className="mt-8 rounded-xl border border-danger-line bg-danger-bg px-6 py-8"
             role="alert"
           >
-            <h1 className="text-2xl font-semibold text-[#192342]">
+            <h1 className="text-2xl font-semibold text-ink">
               Não foi possível carregar este produto
             </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#68738a]">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
               O serviço está temporariamente indisponível. Tente novamente em
               instantes.
             </p>
           </section>
         ) : product ? (
           <>
-            <article className="mt-5 grid overflow-hidden rounded-2xl border border-[#e0e4ed] bg-white lg:grid-cols-[1.04fr_0.96fr]">
+            <article className="mt-5 grid overflow-hidden rounded-2xl border border-line bg-white lg:grid-cols-[1.04fr_0.96fr]">
               <div className="relative aspect-[4/3] min-h-64 bg-[#eef0f6] lg:aspect-auto lg:min-h-[430px]">
                 <Image
                   src={product.image_url}
@@ -114,11 +115,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 />
               </div>
               <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-12">
-                <h1 className="max-w-[18ch] text-[clamp(2.25rem,4vw,4rem)] leading-[1.04] font-semibold tracking-[-0.055em] text-[#192342]">
+                <h1 className="max-w-[18ch] font-serif text-[clamp(2.25rem,4vw,4rem)] leading-[1.04] font-semibold tracking-[-0.055em] text-ink">
                   {product.name}
                 </h1>
+                {product.price !== null && (
+                  <p className="mt-4 text-lg font-semibold text-ink">
+                    {formatPrice(product.price)}
+                  </p>
+                )}
                 {product.description && (
-                  <p className="mt-5 max-w-xl text-base leading-7 text-[#59647e]">
+                  <p className="mt-5 max-w-xl text-base leading-7 text-muted">
                     {product.description}
                   </p>
                 )}
@@ -127,7 +133,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     href={product.external_link}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-8 inline-flex min-h-12 w-fit items-center justify-center rounded-lg bg-[#334ed8] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#293fbe] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#334ed8]"
+                    className="mt-8 inline-flex min-h-12 w-fit items-center justify-center rounded-lg bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     Ver produto
                   </a>
